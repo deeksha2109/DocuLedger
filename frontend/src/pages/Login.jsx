@@ -8,15 +8,30 @@ const Login = () => {
     const [role, setRole] = useState('user');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [status, setStatus] = useState({ loading: false, error: null });
+    const [newPassword, setNewPassword] = useState('');
+    const [status, setStatus] = useState({ loading: false, error: null, success: null });
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setStatus({ loading: true, error: null });
+        setStatus({ loading: true, error: null, success: null });
 
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            
+            if (isForgotPassword) {
+                // Handle direct password reset (No SMTP)
+                await axios.post(`${apiUrl}/auth/reset-password-direct`, {
+                    email,
+                    newPassword
+                });
+                setStatus({ loading: false, error: null, success: 'Password reset successfully. You can now log in.' });
+                setIsForgotPassword(false);
+                setPassword('');
+                return;
+            }
+
             const response = await axios.post(`${apiUrl}/auth/login`, {
                 email,
                 password
@@ -68,9 +83,11 @@ const Login = () => {
 
                     <div className="text-center mb-10">
                         <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 mb-2">
-                            Welcome Back
+                            {isForgotPassword ? 'Reset Password' : 'Welcome Back'}
                         </h2>
-                        <p className="text-white/50 text-sm">Sign in to your Web3 Identity</p>
+                        <p className="text-white/50 text-sm">
+                            {isForgotPassword ? 'Enter your email and a new password' : 'Sign in to your Web3 Identity'}
+                        </p>
                     </div>
 
                     {/* Role Selector Tabs */}
@@ -94,9 +111,16 @@ const Login = () => {
                     </div>
 
                     {status.error && (
-                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400">
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400 animate-in fade-in">
                             <AlertCircle size={20} className="mt-0.5 shrink-0" />
                             <p className="text-sm leading-relaxed">{status.error}</p>
+                        </div>
+                    )}
+
+                    {status.success && (
+                        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl flex items-start gap-3 text-green-400 animate-in fade-in">
+                            <AlertCircle size={20} className="mt-0.5 shrink-0" />
+                            <p className="text-sm leading-relaxed">{status.success}</p>
                         </div>
                     )}
 
@@ -122,25 +146,57 @@ const Login = () => {
                             </label>
                         </div>
 
-                        <div className="relative">
-                            <input
-                                type="password"
-                                id="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder=" "
-                                required
-                            />
-                            <label
-                                htmlFor="password"
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm transition-all
-                           peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-400 peer-focus:bg-[#0a0f1d] peer-focus:px-2 peer-focus:rounded
-                           peer-valid:-top-2 peer-valid:text-xs peer-valid:bg-[#0a0f1d] peer-valid:px-2 peer-valid:rounded peer-valid:text-blue-400"
-                            >
-                                Passkey / Password
-                            </label>
-                        </div>
+                        {!isForgotPassword ? (
+                            <div className="relative">
+                                <input
+                                    type="password"
+                                    id="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                    placeholder=" "
+                                    required={!isForgotPassword}
+                                />
+                                <label
+                                    htmlFor="password"
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm transition-all
+                               peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-400 peer-focus:bg-[#0a0f1d] peer-focus:px-2 peer-focus:rounded
+                               peer-valid:-top-2 peer-valid:text-xs peer-valid:bg-[#0a0f1d] peer-valid:px-2 peer-valid:rounded peer-valid:text-blue-400"
+                                >
+                                    Passkey / Password
+                                </label>
+                                <div className="flex justify-end mt-2 text-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsForgotPassword(true); setStatus({ loading: false, error: null, success: null }); }}
+                                        className="text-white/50 hover:text-blue-400 transition-colors"
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <input
+                                    type="password"
+                                    id="newPassword"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                    placeholder=" "
+                                    required={isForgotPassword}
+                                    minLength={6}
+                                />
+                                <label
+                                    htmlFor="newPassword"
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm transition-all
+                               peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-400 peer-focus:bg-[#0a0f1d] peer-focus:px-2 peer-focus:rounded
+                               peer-valid:-top-2 peer-valid:text-xs peer-valid:bg-[#0a0f1d] peer-valid:px-2 peer-valid:rounded peer-valid:text-blue-400"
+                                >
+                                    New Passkey
+                                </label>
+                            </div>
+                        )}
 
                         <button
                             type="submit"
@@ -154,10 +210,20 @@ const Login = () => {
                                 </span>
                             ) : (
                                 <>
-                                    <KeyRound size={20} /> Access Gateway
+                                    <KeyRound size={20} /> {isForgotPassword ? 'Reset Password' : 'Access Gateway'}
                                 </>
                             )}
                         </button>
+                        
+                        {isForgotPassword && (
+                            <button
+                                type="button"
+                                onClick={() => { setIsForgotPassword(false); setStatus({ loading: false, error: null, success: null }); }}
+                                className="w-full py-3 border border-white/10 hover:bg-white/5 rounded-xl font-medium text-white/60 transition-all"
+                            >
+                                Back to Login
+                            </button>
+                        )}
 
                     </form>
 

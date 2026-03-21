@@ -12,6 +12,7 @@ router.post("/login", ctrl.login);
 router.get("/users", protect, allowRoles("admin"), ctrl.getUsers);
 router.post("/add-student", protect, allowRoles("admin"), upload.single("certificateFile"), ctrl.addStudent);
 router.delete("/students/:id", protect, allowRoles("admin"), ctrl.deleteStudent);
+router.post("/reset-password-direct", ctrl.resetPasswordDirect);
 router.put("/change-password", protect, ctrl.changePassword);
 
 module.exports = router;
