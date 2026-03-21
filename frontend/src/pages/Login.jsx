@@ -1,17 +1,51 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { UserCircle, ShieldAlert, KeyRound } from 'lucide-react';
+import { UserCircle, ShieldAlert, KeyRound, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 
 const Login = () => {
-    const [role, setRole] = useState('student');
+    const [role, setRole] = useState('user');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [status, setStatus] = useState({ loading: false, error: null });
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Simulate login based on selected role
-        if (role === 'admin') navigate('/admin');
-        else navigate('/student');
+        setStatus({ loading: true, error: null });
+
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const response = await axios.post(`${apiUrl}/auth/login`, {
+                email,
+                password
+            });
+
+            // Assuming the backend returns the user object and a JWT token
+            const { token, user } = response.data;
+
+            // Basic role check - if user attempts to login to wrong portal
+            if (user.role && user.role !== role && role === 'admin') {
+                setStatus({ loading: false, error: "Unauthorized: Admin access required." });
+                return;
+            }
+
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('email', user.email);
+
+            if (role === 'admin' || user.role === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/student'); // Adjust based on your routing
+            }
+        } catch (error) {
+            setStatus({
+                loading: false,
+                error: error.response?.data?.message || 'Login failed. Please check your credentials.'
+            });
+        }
     };
 
     return (
@@ -42,13 +76,15 @@ const Login = () => {
                     {/* Role Selector Tabs */}
                     <div className="flex p-1 bg-black/40 rounded-xl mb-8 border border-white/5">
                         <button
-                            onClick={() => setRole('student')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${role === 'student' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-white/50 hover:text-white'
+                            type="button"
+                            onClick={() => setRole('user')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${role === 'user' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-white/50 hover:text-white'
                                 }`}
                         >
                             <UserCircle size={16} /> Student
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRole('admin')}
                             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${role === 'admin' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-white/50 hover:text-white'
                                 }`}
@@ -57,13 +93,22 @@ const Login = () => {
                         </button>
                     </div>
 
+                    {status.error && (
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400">
+                            <AlertCircle size={20} className="mt-0.5 shrink-0" />
+                            <p className="text-sm leading-relaxed">{status.error}</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleLogin} className="space-y-6">
 
                         <div className="relative">
                             <input
-                                type="text"
+                                type="email"
                                 id="identifier"
-                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 placeholder=" "
                                 required
                             />
@@ -73,7 +118,7 @@ const Login = () => {
                            peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-400 peer-focus:bg-[#0a0f1d] peer-focus:px-2 peer-focus:rounded
                            peer-valid:-top-2 peer-valid:text-xs peer-valid:bg-[#0a0f1d] peer-valid:px-2 peer-valid:rounded peer-valid:text-blue-400"
                             >
-                                {role === 'admin' ? 'Institution ID (0x...)' : 'Student Wallet Address / ID'}
+                                Email Address
                             </label>
                         </div>
 
@@ -81,7 +126,9 @@ const Login = () => {
                             <input
                                 type="password"
                                 id="password"
-                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 placeholder=" "
                                 required
                             />
@@ -91,15 +138,25 @@ const Login = () => {
                            peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-400 peer-focus:bg-[#0a0f1d] peer-focus:px-2 peer-focus:rounded
                            peer-valid:-top-2 peer-valid:text-xs peer-valid:bg-[#0a0f1d] peer-valid:px-2 peer-valid:rounded peer-valid:text-blue-400"
                             >
-                                Passkey
+                                Passkey / Password
                             </label>
                         </div>
 
                         <button
                             type="submit"
-                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2"
+                            disabled={status.loading}
+                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                         >
-                            <KeyRound size={20} /> Access Gateway
+                            {status.loading ? (
+                                <span className="flex items-center gap-2">
+                                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Connecting...
+                                </span>
+                            ) : (
+                                <>
+                                    <KeyRound size={20} /> Access Gateway
+                                </>
+                            )}
                         </button>
 
                     </form>

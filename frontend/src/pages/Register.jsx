@@ -1,16 +1,38 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, UserCircle, ShieldAlert, KeyRound, Mail, Type } from 'lucide-react';
+import { UserPlus, UserCircle, ShieldAlert, KeyRound, Mail, Type, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 
 const Register = () => {
-    const [role, setRole] = useState('student');
+    const [role, setRole] = useState('user');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [status, setStatus] = useState({ loading: false, error: null });
     const navigate = useNavigate();
 
-    const handleRegister = (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
-        // Simulate registration success, redirect to login
-        navigate('/login');
+        setStatus({ loading: true, error: null });
+
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            await axios.post(`${apiUrl}/auth/register`, {
+                name,
+                email,
+                password,
+                role
+            });
+
+            // Registration successful, redirect to login
+            navigate('/login');
+        } catch (error) {
+            setStatus({
+                loading: false,
+                error: error.response?.data?.message || 'Registration failed. Please try again.'
+            });
+        }
     };
 
     return (
@@ -44,13 +66,15 @@ const Register = () => {
                     {/* Role Selector Tabs */}
                     <div className="flex p-1 bg-black/40 rounded-xl mb-6 border border-white/5 mx-auto max-w-xs">
                         <button
-                            onClick={() => setRole('student')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${role === 'student' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-white/50 hover:text-white'
+                            type="button"
+                            onClick={() => setRole('user')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${role === 'user' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-white/50 hover:text-white'
                                 }`}
                         >
                             <UserCircle size={16} /> Student
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRole('admin')}
                             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${role === 'admin' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-white/50 hover:text-white'
                                 }`}
@@ -59,6 +83,13 @@ const Register = () => {
                         </button>
                     </div>
 
+                    {status.error && (
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400">
+                            <AlertCircle size={20} className="mt-0.5 shrink-0" />
+                            <p className="text-sm leading-relaxed">{status.error}</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleRegister} className="space-y-5">
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -66,7 +97,9 @@ const Register = () => {
                                 <input
                                     type="text"
                                     id="fullname"
-                                    className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     placeholder=" "
                                     required
                                 />
@@ -84,7 +117,9 @@ const Register = () => {
                                 <input
                                     type="email"
                                     id="email"
-                                    className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     placeholder=" "
                                     required
                                 />
@@ -101,27 +136,11 @@ const Register = () => {
 
                         <div className="relative">
                             <input
-                                type="text"
-                                id="identifier"
-                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent"
-                                placeholder=" "
-                                required
-                            />
-                            <label
-                                htmlFor="identifier"
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm transition-all
-                        peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-400 peer-focus:bg-[#0a0f1d] peer-focus:px-2 peer-focus:rounded
-                        peer-valid:-top-2 peer-valid:text-xs peer-valid:bg-[#0a0f1d] peer-valid:px-2 peer-valid:rounded peer-valid:text-blue-400 flex items-center gap-1"
-                            >
-                                {role === 'admin' ? 'Institution License ID' : 'Student Wallet Address (0x...)'}
-                            </label>
-                        </div>
-
-                        <div className="relative">
-                            <input
                                 type="password"
                                 id="password"
-                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="glass-input w-full px-4 py-3 rounded-xl peer placeholder-transparent text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 placeholder=" "
                                 required
                             />
@@ -141,9 +160,17 @@ const Register = () => {
 
                         <button
                             type="submit"
-                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)] mt-2"
+                            disabled={status.loading}
+                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)] mt-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                         >
-                            Complete Registration
+                            {status.loading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Registering...
+                                </span>
+                            ) : (
+                                "Complete Registration"
+                            )}
                         </button>
 
                     </form>

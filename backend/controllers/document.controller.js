@@ -82,6 +82,23 @@ exports.verifyDocument = async (req, res) => {
   res.json({ success: true });
 };
 
+exports.unverifyDocument = async (req, res) => {
+  try {
+    const { docId } = req.body;
+    if (!docId) return res.status(400).json({ message: "docId is required." });
+
+    const doc = await Document.findOne({ docId });
+    if (!doc) return res.status(404).json({ message: "Document not found." });
+
+    // Blockchain is immutable — only update the DB status
+    await Document.updateOne({ docId }, { verified: false });
+
+    res.json({ success: true, message: "Certificate marked as unverified in system records." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to unverify document." });
+  }
+};
+
 exports.getMyDocuments = async (req, res) => {
 
   const { email } = req.params;
@@ -104,4 +121,63 @@ exports.getDocumentById = async (req, res) => {
     timestamp: data[5].toString(),
     verified: data[6]
   });
+};
+
+exports.getAllDocuments = async (req, res) => {
+  try {
+    const docs = await Document.find().sort({ createdAt: -1 });
+    res.json(docs);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch documents" });
+  }
+};
+
+exports.getDocumentByHash = async (req, res) => {
+  try {
+    const doc = await Document.findOne({ hashValue: req.params.hashValue });
+    if (!doc) {
+      return res.status(404).json({ message: "Document not found or invalid hash signature." });
+    }
+    
+    res.json({
+        docId: doc.docId,
+        owner: doc.ownerEmail,
+        title: doc.title,
+        issuer: doc.issuer,
+        hashValue: doc.hashValue,
+        timestamp: doc.createdAt,
+        verified: doc.verified || true,
+        txHash: doc.txHash
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error during hash verification." });
+  }
+};
+
+exports.getDownloadUrl = async (req, res) => {
+  try {
+    // Try searching by docId (UUID) first, then fall back to _id
+    let doc = await Document.findOne({ docId: req.params.docId });
+    if (!doc) {
+      // Fallback: search by MongoDB _id
+      doc = await Document.findById(req.params.docId).catch(() => null);
+    }
+    if (!doc || !doc.filePath) {
+      return res.status(404).json({ message: "File not found for this document." });
+    }
+
+    // The bucket is private — always use a signed URL (1 hour expiry)
+    const { data: signedData, error } = await supabase.storage
+      .from("certificates")
+      .createSignedUrl(doc.filePath, 3600);
+
+    if (error) {
+      console.error("Supabase signed URL error:", error);
+      return res.status(500).json({ message: "Could not generate download link.", detail: error.message });
+    }
+
+    res.json({ url: signedData.signedUrl, filename: doc.title || "certificate" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error generating download URL." });
+  }
 };

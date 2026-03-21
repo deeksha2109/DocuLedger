@@ -8,7 +8,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["admin", "issuer", "verifier", "user"],
     default: "user"
-  }
+  },
+  course: String,
+  enrollmentId: String,
+  walletAddress: String,
+  certificate: String
 });
 
 module.exports = mongoose.model("User", userSchema);

@@ -21,7 +21,21 @@ router.post(
   ctrl.verifyDocument
 );
 
+router.post(
+  "/unverify",
+  protect,
+  allowRoles("admin"),
+  ctrl.unverifyDocument
+);
+
+// Public Route for Verification
+router.get("/hash/:hashValue", ctrl.getDocumentByHash);
+
 router.get("/my/:email", protect, ctrl.getMyDocuments);
+
+router.get("/all", protect, allowRoles("admin"), ctrl.getAllDocuments);
+
+router.get("/download/:docId", protect, ctrl.getDownloadUrl);
 
 router.get("/:docId", ctrl.getDocumentById);
 

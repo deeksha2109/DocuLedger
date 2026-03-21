@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, UploadCloud, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import QRScanner from '../components/QRScanner';
+import { verifyByHash } from '../services/documentApi';
 
 const Verify = () => {
     const [verifyMethod, setVerifyMethod] = useState('upload'); // 'upload' or 'qr'
@@ -9,39 +11,58 @@ const Verify = () => {
     const [certData, setCertData] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Mock function to simulate verification process
-    const simulateVerification = (data) => {
+    // Function to verify document using real backend
+    const processVerification = async (data) => {
         setIsProcessing(true);
         setVerificationStatus(null);
+        setCertData(null);
 
-        setTimeout(() => {
-            // Simulate 80% success rate for demo purposes
-            const isValid = Math.random() > 0.2;
-            setVerificationStatus(isValid ? 'valid' : 'invalid');
+        try {
+            let hashToVerify = data.hash;
 
-            if (isValid) {
-                setCertData({
-                    id: data.id || 'CERT-8492-BX',
-                    studentName: 'Alex Mercer',
-                    course: 'B.Tech Computer Science',
-                    issueDate: '2025-06-15',
-                    issuer: 'Tech University',
-                    txHash: '0x8f...4b29'
-                });
+            if (data.file) {
+                const computeHash = async (f) => {
+                    const buffer = await f.arrayBuffer();
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                };
+                hashToVerify = await computeHash(data.file);
             }
+
+            const response = await verifyByHash(hashToVerify);
+            
+            if (response.data) {
+                setVerificationStatus('valid');
+                setCertData({
+                    id: response.data.docId,
+                    studentName: response.data.owner || 'Verified Owner',
+                    course: response.data.title || 'Verified Document',
+                    issueDate: response.data.timestamp ? new Date(response.data.timestamp).toLocaleDateString() : 'N/A',
+                    issuer: response.data.issuer || 'Verified Institution',
+                    txHash: response.data.txHash || 'Verified on Blockchain'
+                });
+            } else {
+                 setVerificationStatus('invalid');
+            }
+
+        } catch (error) {
+            console.error("Verification failed:", error);
+            setVerificationStatus('invalid');
+        } finally {
             setIsProcessing(false);
-        }, 2000);
+        }
     };
 
     const handleFileUpload = (e) => {
         e.preventDefault();
         if (e.target.files && e.target.files[0]) {
-            simulateVerification({ id: e.target.files[0].name });
+            processVerification({ file: e.target.files[0] }); 
         }
     };
 
     const handleQRScan = (decodedText) => {
-        simulateVerification({ id: decodedText });
+        processVerification({ hash: decodedText });
     };
 
     return (

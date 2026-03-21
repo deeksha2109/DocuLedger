@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -9,16 +9,28 @@ import {
     X,
     User,
     Settings,
-    Users
+    Users,
+    ShieldCheck
 } from 'lucide-react';
 import ReactLoading from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 
 const DashboardLayout = ({ children, role = 'student' }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [userName, setUserName] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
     const currentHash = location.hash || '';
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const userObj = JSON.parse(storedUser);
+                setUserName(userObj.name);
+            } catch(e) {}
+        }
+    }, []);
 
     const handleLogout = () => {
         // Basic logout flow simulation
@@ -33,6 +45,7 @@ const DashboardLayout = ({ children, role = 'student' }) => {
 
     const studentLinks = [
         { name: 'My Certificates', path: '/student', icon: <FileBadge size={20} /> },
+        { name: 'Verify Certificate', path: '/student#verify', icon: <ShieldCheck size={20} /> },
         { name: 'Profile', path: '/student#profile', icon: <User size={20} /> },
         { name: 'Settings', path: '/student#settings', icon: <Settings size={20} /> },
     ];
@@ -60,7 +73,7 @@ const DashboardLayout = ({ children, role = 'student' }) => {
                 </div>
                 <div>
                     <h4 className="text-white font-semibold">
-                        {role === 'admin' ? 'Institution Admin' : 'John Doe'}
+                        {userName || (role === 'admin' ? 'Institution Admin' : 'Student')}
                     </h4>
                     <p className="text-xs text-blue-400 capitalize">{role} Account</p>
                 </div>
